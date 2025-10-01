@@ -2,3 +2,4 @@ Flask
 Flask-Cors
 thefuzz
 python-Levenshtein
+gunicorn
