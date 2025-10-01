@@ -1,0 +1,36 @@
+{
+    "questions": [
+      {
+        "question": "How can I improve team productivity?",
+        "answer": "You can improve team productivity by using daily stand-ups, setting clear OKRs (Objectives and Key Results), and encouraging time-blocking."
+      },
+      {
+        "question": "What are some tips for effective remote work?",
+        "answer": "For effective remote work, maintain a fixed schedule, use video check-ins for team alignment, and set clear boundaries between work and personal life."
+      },
+      {
+        "question": "How should I prioritize my tasks?",
+        "answer": "A great way to prioritize tasks is using the Eisenhower Matrix. It helps you categorize tasks based on urgency and importance: Urgent/Important, Not Urgent/Important, etc."
+      },
+      {
+        "question": "What are the best practices for managing startup funding?",
+        "answer": "To manage startup funding effectively, you should track your 'runway' (how long the money lasts), maintain good relationships with investors, and plan your next funding rounds well in advance."
+      },
+      {
+        "question": "How can I be a better leader?",
+        "answer": "To be a better leader, focus on clear communication, empower your team members by delegating tasks, and provide constructive feedback regularly."
+      },
+      {
+        "question": "What is the key to successful project management?",
+        "answer": "The key to successful project management is having a clear project scope, realistic timelines, open communication with stakeholders, and being adaptable to change."
+      },
+      {
+        "question": "How do I deal with burnout?",
+        "answer": "To deal with burnout, it's important to take regular breaks, practice mindfulness or meditation, delegate tasks, and talk to a manager or mentor about your workload."
+      },
+      {
+        "question": "What makes a good company culture?",
+        "answer": "A good company culture is built on trust, respect, and open communication. It values employee well-being, encourages collaboration, and celebrates successes."
+      }
+    ]
+  }
