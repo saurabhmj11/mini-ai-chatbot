@@ -9,11 +9,12 @@ const useTypingEffect = (text, duration) => {
   useEffect(() => {
     if (text) {
       let i = 0;
-      setDisplayedText(''); // Reset text when new text comes in
+      setDisplayedText('');
       const intervalId = setInterval(() => {
-        setDisplayedText(prev => prev + text.charAt(i));
-        i++;
-        if (i > text.length) {
+        if (i < text.length) {
+          setDisplayedText(prev => prev + text.charAt(i));
+          i++;
+        } else {
           clearInterval(intervalId);
         }
       }, duration);
@@ -25,11 +26,24 @@ const useTypingEffect = (text, duration) => {
   return displayedText;
 };
 
-// New Component for rendering each chat message
+// Component for rendering each chat message
 const ChatMessage = ({ message, isLastBotMessage }) => {
   const isBot = message.type === 'bot';
-  // If it's the last bot message, apply the typing effect. Otherwise, show the full message.
-  const displayText = isBot && isLastBotMessage ? useTypingEffect(message.message, 50) : message.message;
+  
+  // FIX 1: The Hook is now called unconditionally at the top.
+  const typedMessage = useTypingEffect(message.message, 40);
+  
+  // The RESULT of the Hook is then used conditionally.
+  const displayText = isBot && isLastBotMessage ? typedMessage : message.message;
+  
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(message.message).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+    });
+  };
 
   return (
     <div className={`message-wrapper ${message.type}`}>
@@ -41,8 +55,13 @@ const ChatMessage = ({ message, isLastBotMessage }) => {
       )}
       <div className={`message ${message.type}`}>
         {displayText}
-        {/* Show blinking cursor only when typing */}
         {isBot && isLastBotMessage && displayText.length < message.message.length && <span className="typing-cursor"></span>}
+        
+        {isBot && (!isLastBotMessage || displayText.length === message.message.length) && (
+          <button onClick={handleCopy} className="copy-btn">
+            {isCopied ? 'Copied!' : 'Copy'}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -50,7 +69,18 @@ const ChatMessage = ({ message, isLastBotMessage }) => {
 
 function App() {
   const [input, setInput] = useState('');
-  const [chatHistory, setChatHistory] = useState([]);
+  
+  // FIX 2: Welcome message logic is now combined with the localStorage logic.
+  const [chatHistory, setChatHistory] = useState(() => {
+    const savedHistory = localStorage.getItem('chatHistory');
+    const initialHistory = savedHistory ? JSON.parse(savedHistory) : [];
+    
+    if (initialHistory.length === 0) {
+      return [{ type: 'bot', message: 'Hello! I am your AI Assistant. How can I help you with your professional questions today?' }];
+    }
+    return initialHistory;
+  });
+  
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
 
@@ -58,9 +88,14 @@ function App() {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  useEffect(scrollToBottom, [chatHistory]);
+
+  // Save chat history to localStorage whenever it changes
   useEffect(() => {
-    scrollToBottom();
-  }, [chatHistory]); // Scrolls whenever history changes
+    localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+  }, [chatHistory]);
+
+  // The problematic useEffect for the welcome message is no longer needed.
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,7 +107,6 @@ function App() {
     setIsLoading(true);
 
     try {
-      // *** THIS IS THE UPDATED LINE FOR DEPLOYMENT ***
       const response = await axios.post('https://mini-ai-chatbot-backend.onrender.com/ask', {
         question: input,
       });
@@ -100,7 +134,6 @@ function App() {
             <ChatMessage 
               key={index} 
               message={item}
-              // Pass a prop to identify the very last bot message for the typing effect
               isLastBotMessage={item.type === 'bot' && index === chatHistory.length - 1} 
             />
           ))}
