@@ -1,4 +1,5 @@
 import json
+import sys
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from thefuzz import process
@@ -7,35 +8,36 @@ from thefuzz import process
 app = Flask(__name__)
 
 # FIX: Updated CORS configuration for production deployment
-# This explicitly allows requests from any domain (*) to the /ask endpoint.
 CORS(app, resources={r"/ask": {"origins": "*"}})
 
 # --- KNOWLEDGE BASE ---
 def load_knowledge_base(file_path='knowledge_base.json'):
     """Loads the knowledge base from a JSON file."""
-    with open(file_path, 'r') as f:
-        data = json.load(f)
-    return data['questions']
-
-# Load the questions and prepare them for fuzzy matching
-knowledge_base = load_knowledge_base()
-questions_list = [q['question'] for q in knowledge_base]
-
-# --- CHAT HISTORY ---
-# Note: On free hosting services like Render, the file system is ephemeral.
-# This means chat_history.json will be reset whenever the server restarts or sleeps.
-def load_chat_history(file_path='chat_history.json'):
-    """Loads chat history or creates the file if it doesn't exist."""
     try:
-        with open(file_path, 'r') as f:
-            return json.load(f)
+        with open(file_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data['questions']
     except FileNotFoundError:
+        # IMPROVEMENT: Gracefully handle if the KB file is missing
+        sys.stderr.write(f"Error: Knowledge base file not found at {file_path}\n")
+        return []
+    except json.JSONDecodeError:
+        # IMPROVEMENT: Gracefully handle if the KB file is not valid JSON
+        sys.stderr.write(f"Error: Could not decode JSON from {file_path}\n")
         return []
 
-def save_chat_history(data, file_path='chat_history.json'):
-    """Saves the updated chat history to the file."""
-    with open(file_path, 'w') as f:
-        json.dump(data, f, indent=2)
+# --- DATA LOADING AND PREPARATION ---
+# IMPROVEMENT: Load data at startup and prepare for efficient lookups
+knowledge_base = load_knowledge_base()
+if knowledge_base:
+    questions_list = [q['question'] for q in knowledge_base]
+    # IMPROVEMENT: Create a dictionary for instant answer lookups (more efficient)
+    question_to_answer_map = {q['question']: q['answer'] for q in knowledge_base}
+else:
+    questions_list = []
+    question_to_answer_map = {}
+    sys.stderr.write("Warning: Knowledge base is empty. Chatbot will not be able to answer questions.\n")
+
 
 # --- API ENDPOINT ---
 @app.route('/ask', methods=['POST'])
@@ -48,21 +50,19 @@ def ask():
     if not user_question:
         return jsonify({"error": "No question provided"}), 400
 
-    best_match = process.extractOne(user_question, questions_list)
-
+    # Default answer if no good match is found or KB is empty
     answer = "I'm sorry, I don't have an answer to that. Please try asking another question."
     
-    if best_match and best_match[1] > 80:
-        matched_question_str = best_match[0]
-        for q_pair in knowledge_base:
-            if q_pair['question'] == matched_question_str:
-                answer = q_pair['answer']
-                break
+    # IMPROVEMENT: Check if questions_list is not empty before processing
+    if questions_list:
+        best_match = process.extractOne(user_question, questions_list)
+        
+        if best_match and best_match[1] > 80:
+            matched_question_str = best_match[0]
+            # IMPROVEMENT: Use the dictionary for a fast, direct lookup
+            answer = question_to_answer_map.get(matched_question_str, answer)
     
-    # [cite_start]Save the conversation to chat history [cite: 17]
-    chat_history = load_chat_history()
-    chat_history.append({"question": user_question, "answer": answer})
-    save_chat_history(chat_history)
+    # The file-based chat history has been removed as it's not suitable for a deployed environment.
 
     response = {
         "question": user_question,
