@@ -5,8 +5,10 @@ from thefuzz import process
 
 # Initialize the Flask app
 app = Flask(__name__)
-# Enable CORS to allow communication from the frontend
-CORS(app)
+
+# FIX: Updated CORS configuration for production deployment
+# This explicitly allows requests from any domain (*) to the /ask endpoint.
+CORS(app, resources={r"/ask": {"origins": "*"}})
 
 # --- KNOWLEDGE BASE ---
 def load_knowledge_base(file_path='knowledge_base.json'):
@@ -17,10 +19,11 @@ def load_knowledge_base(file_path='knowledge_base.json'):
 
 # Load the questions and prepare them for fuzzy matching
 knowledge_base = load_knowledge_base()
-# We create a list of just the questions for the matching algorithm
 questions_list = [q['question'] for q in knowledge_base]
 
-# --- CHAT HISTORY (Optional but Recommended) ---
+# --- CHAT HISTORY ---
+# Note: On free hosting services like Render, the file system is ephemeral.
+# This means chat_history.json will be reset whenever the server restarts or sleeps.
 def load_chat_history(file_path='chat_history.json'):
     """Loads chat history or creates the file if it doesn't exist."""
     try:
@@ -40,33 +43,27 @@ def ask():
     """
     API endpoint that accepts a question and returns the best answer.
     """
-    # Get the user's question from the POST request body
     user_question = request.json.get('question')
 
     if not user_question:
         return jsonify({"error": "No question provided"}), 400
 
-    # Find the best match from our knowledge base using fuzzy matching
-    # process.extractOne returns a tuple: (matched_question, score)
     best_match = process.extractOne(user_question, questions_list)
 
     answer = "I'm sorry, I don't have an answer to that. Please try asking another question."
     
-    # We use a threshold of 80 for the match score. You can adjust this.
     if best_match and best_match[1] > 80:
         matched_question_str = best_match[0]
-        # Find the full Q&A pair from the knowledge_base
         for q_pair in knowledge_base:
             if q_pair['question'] == matched_question_str:
                 answer = q_pair['answer']
                 break
     
-    # (Optional) Save the conversation to chat history [cite: 17]
+    # [cite_start]Save the conversation to chat history [cite: 17]
     chat_history = load_chat_history()
     chat_history.append({"question": user_question, "answer": answer})
     save_chat_history(chat_history)
 
-    # Return the response as JSON
     response = {
         "question": user_question,
         "answer": answer
@@ -76,5 +73,5 @@ def ask():
 
 # --- MAIN EXECUTION ---
 if __name__ == '__main__':
-    # Runs the Flask app on port 5000
+    # This part is for local development only
     app.run(debug=True, port=5000)
