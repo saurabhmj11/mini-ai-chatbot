@@ -29,19 +29,14 @@ const useTypingEffect = (text, duration) => {
 // Component for rendering each chat message
 const ChatMessage = ({ message, isLastBotMessage }) => {
   const isBot = message.type === 'bot';
-  
-  // FIX 1: The Hook is now called unconditionally at the top.
   const typedMessage = useTypingEffect(message.message, 40);
-  
-  // The RESULT of the Hook is then used conditionally.
   const displayText = isBot && isLastBotMessage ? typedMessage : message.message;
-  
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.message).then(() => {
       setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
     });
   };
 
@@ -69,18 +64,15 @@ const ChatMessage = ({ message, isLastBotMessage }) => {
 
 function App() {
   const [input, setInput] = useState('');
-  
-  // FIX 2: Welcome message logic is now combined with the localStorage logic.
   const [chatHistory, setChatHistory] = useState(() => {
     const savedHistory = localStorage.getItem('chatHistory');
     const initialHistory = savedHistory ? JSON.parse(savedHistory) : [];
     
     if (initialHistory.length === 0) {
-      return [{ type: 'bot', message: 'Hello! I am your AI Assistant. How can I help you with your professional questions today?' }];
+      return [{ type: 'bot', message: 'Hello! I am your AI Assistant. How can I help you today?' }];
     }
     return initialHistory;
   });
-  
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef(null);
 
@@ -90,12 +82,9 @@ function App() {
 
   useEffect(scrollToBottom, [chatHistory]);
 
-  // Save chat history to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
   }, [chatHistory]);
-
-  // The problematic useEffect for the welcome message is no longer needed.
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -107,9 +96,12 @@ function App() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post('https://mini-ai-chatbot-backend.onrender.com/ask', {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/ask`, {
         question: input,
       });
+      
+      // FIX: Removed extra semicolon and closing brace that caused a syntax error
+      
       const botMessage = { type: 'bot', message: response.data.answer };
       setChatHistory(prev => [...prev, botMessage]);
 
